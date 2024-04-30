@@ -1,78 +1,70 @@
 import {
-  ButtonItem,
   definePlugin,
   DialogButton,
-  Menu,
-  MenuItem,
   Navigation,
   PanelSection,
   PanelSectionRow,
   ServerAPI,
-  showContextMenu,
   staticClasses,
 } from "decky-frontend-lib";
-import { VFC } from "react";
-import { FaShip } from "react-icons/fa";
+import { useEffect, useState, VFC } from "react";
+import { FaShieldAlt } from "react-icons/fa";
+import LoginForm from "./components/LoginForm";
 
-import logo from "../assets/logo.png";
+interface StatusResult {
+  serverUrl: string;
+  lastSync: Date;
+  userEmail: string;
+  userId: string;
+  status: string;
+}
 
-// interface AddMethodArgs {
-//   left: number;
-//   right: number;
-// }
+const Content: VFC<{ serverAPI: ServerAPI }> = ({ serverAPI }) => {
+  const [status, setStatus] = useState<StatusResult>();
+  const [error, setError] = useState<string>();
 
-const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
-  // const [result, setResult] = useState<number | undefined>();
+  const loadStatus = () => {
+    serverAPI
+      .callPluginMethod<{}, StatusResult>("status", {})
+      .then((data) =>
+        data.success ? setStatus(data.result) : setError(data.result)
+      );
+  };
 
-  // const onClick = async () => {
-  //   const result = await serverAPI.callPluginMethod<AddMethodArgs, number>(
-  //     "add",
-  //     {
-  //       left: 2,
-  //       right: 2,
-  //     }
-  //   );
-  //   if (result.success) {
-  //     setResult(result.result);
-  //   }
-  // };
+  useEffect(loadStatus, []);
+
+  if (status) {
+    if (status.status == "unauthenticated") {
+      return <LoginForm serverAPI={serverAPI} onLogin={loadStatus} />;
+    }
+    if (status.status == "locked") {
+      return (
+        <PanelSection title="Unlock">
+          <PanelSectionRow>Insert master password Form Here</PanelSectionRow>
+        </PanelSection>
+      );
+    }
+    return (
+      <PanelSection title="DeckyWarden">
+        <PanelSectionRow>Search/List Secrets</PanelSectionRow>
+      </PanelSection>
+    );
+  }
+
+  if (error) {
+    return (
+      <PanelSection title="Error">
+        <PanelSectionRow>
+          <pre>{error}</pre>
+        </PanelSectionRow>
+      </PanelSection>
+    );
+  }
 
   return (
-    <PanelSection title="Panel Section">
+    <PanelSection title="Loading...">
       <PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={(e) =>
-            showContextMenu(
-              <Menu label="Menu" cancelText="CAAAANCEL" onCancel={() => {}}>
-                <MenuItem onSelected={() => {}}>Item #1</MenuItem>
-                <MenuItem onSelected={() => {}}>Item #2</MenuItem>
-                <MenuItem onSelected={() => {}}>Item #3</MenuItem>
-              </Menu>,
-              e.currentTarget ?? window
-            )
-          }
-        >
-          Server says yolo
-        </ButtonItem>
-      </PanelSectionRow>
-
-      <PanelSectionRow>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <img src={logo} />
-        </div>
-      </PanelSectionRow>
-
-      <PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={() => {
-            Navigation.CloseSideMenus();
-            Navigation.Navigate("/decky-plugin-test");
-          }}
-        >
-          Router
-        </ButtonItem>
+        (pretend there's a fancy spinny graphic here)
       </PanelSectionRow>
     </PanelSection>
   );
@@ -95,9 +87,9 @@ export default definePlugin((serverApi: ServerAPI) => {
   });
 
   return {
-    title: <div className={staticClasses.Title}>Example Plugin</div>,
+    title: <div className={staticClasses.Title}>DeckyWarden</div>,
     content: <Content serverAPI={serverApi} />,
-    icon: <FaShip />,
+    icon: <FaShieldAlt />,
     onDismount() {
       serverApi.routerHook.removeRoute("/decky-plugin-test");
     },
